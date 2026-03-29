@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  username  String    @unique
+  password  String
+  watched   Watched[]
+  createdAt DateTime  @default(now())
+}
+
+model Watched {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anilistId    Int
+  titleRomaji  String
+  titleNative  String?
+  titleEnglish String?
+  coverImage   String
+  averageScore Int?
+  genres       String   // JSON array
+  tags         String   // JSON array of {name, rank}
+  episodes     Int?
+  status       String?
+  addedAt      DateTime @default(now())
+
+  @@unique([userId, anilistId])
+}
