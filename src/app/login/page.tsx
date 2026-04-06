@@ -28,8 +28,7 @@ export default function LoginPage() {
         setError("用户名或密码错误");
         setLoading(false);
       } else {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       }
     } catch {
       setError("服务器连接失败，请检查后重试");

@@ -46,8 +46,7 @@ export default function RegisterPage() {
         redirect: false,
       });
 
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch {
       setError("服务器连接失败，请检查后重试");
       setLoading(false);
