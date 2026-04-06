@@ -17,18 +17,23 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      username,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
+      });
 
-    if (res?.error) {
-      setError("用户名或密码错误");
+      if (res?.error) {
+        setError("用户名或密码错误");
+        setLoading(false);
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("服务器连接失败，请检查后重试");
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
   }
 

@@ -24,29 +24,34 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.error);
+      if (!res.ok) {
+        setError(data.error || "注册失败，请稍后重试");
+        setLoading(false);
+        return;
+      }
+
+      // Auto login after register
+      await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
+      });
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("服务器连接失败，请检查后重试");
       setLoading(false);
-      return;
     }
-
-    // Auto login after register
-    await signIn("credentials", {
-      username,
-      password,
-      redirect: false,
-    });
-
-    router.push("/");
-    router.refresh();
   }
 
   return (
