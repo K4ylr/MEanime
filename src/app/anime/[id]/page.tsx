@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimeDetail, Anime } from "@/lib/types";
 import { getAnimeDetail } from "@/lib/anilist";
-import { getGenreColor, GENRE_CN } from "@/lib/genreColors";
+import { getGenreColor, GENRE_CN, TAG_CN } from "@/lib/genreColors";
 import { getBahamutUrl, getBilibiliUrl } from "@/lib/links";
 
 const STATUS_CN: Record<string, string> = {
@@ -35,13 +35,13 @@ const SEASON_CN: Record<string, string> = {
 };
 
 // Chinese title fetcher
-async function fetchChineseTitle(keyword: string): Promise<string | null> {
+async function fetchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null }> {
   try {
     const res = await fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`);
     const data = await res.json();
-    return data.title || null;
+    return { title: data.title || null, summary: data.summary || null };
   } catch {
-    return null;
+    return { title: null, summary: null };
   }
 }
 
@@ -60,6 +60,7 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
   const { data: session } = useSession();
   const [anime, setAnime] = useState<AnimeDetail | null>(null);
   const [cnTitle, setCnTitle] = useState<string | null>(null);
+  const [cnSummary, setCnSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isWatched, setIsWatched] = useState(false);
 
@@ -68,10 +69,11 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
       try {
         const detail = await getAnimeDetail(parseInt(id));
         setAnime(detail);
-        // Fetch Chinese title
+        // Fetch Chinese title + summary
         const keyword = detail.title.native || detail.title.romaji;
-        const cn = await fetchChineseTitle(keyword);
-        setCnTitle(cn);
+        const info = await fetchChineseInfo(keyword);
+        setCnTitle(info.title);
+        setCnSummary(info.summary);
       } catch {
         // silent
       }
@@ -287,10 +289,10 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* Description */}
-            {anime.description && (
+            {(cnSummary || anime.description) && (
               <div className="mt-4">
                 <p className="leading-relaxed text-gray-300">
-                  {anime.description.replace(/<[^>]*>/g, "")}
+                  {cnSummary || anime.description?.replace(/<[^>]*>/g, "")}
                 </p>
               </div>
             )}
@@ -300,7 +302,7 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {anime.tags.slice(0, 15).map((tag) => (
                   <span key={tag.name} className="rounded-lg bg-gray-800 px-2 py-1 text-xs text-gray-500">
-                    {tag.name}
+                    {TAG_CN[tag.name] || tag.name}
                   </span>
                 ))}
               </div>

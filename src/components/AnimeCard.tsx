@@ -110,13 +110,13 @@ export default function AnimeCard({
       </Link>
 
       {/* Title & quick info */}
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
+      <div className="h-[76px] p-3">
         <Link href={`/anime/${anime.id}`}>
           <h3 className="line-clamp-2 text-sm font-semibold text-gray-100 transition-colors hover:text-sky-300">
             {displayTitle}
           </h3>
         </Link>
-        <div className="flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {anime.genres.slice(0, 3).map((genre) => (
             <span
               key={genre}
