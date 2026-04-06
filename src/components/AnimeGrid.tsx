@@ -13,7 +13,7 @@ export default function AnimeGrid({
   onWatchToggle: (anime: Anime) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
       {animeList.map((anime) => (
         <AnimeCard
           key={anime.id}

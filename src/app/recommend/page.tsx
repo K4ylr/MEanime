@@ -21,11 +21,11 @@ export default function RecommendPage() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Genre filter
+  // Genre filter: "" = all, otherwise specific genre
   const [selectedGenre, setSelectedGenre] = useState<string>("");
 
   // Store analyzed data for pagination
-  const [analyzedGenres, setAnalyzedGenres] = useState<string[]>([]);
+  const [currentGenres, setCurrentGenres] = useState<string[]>([]);
   const [analyzedTags, setAnalyzedTags] = useState<string[]>([]);
   const [excludeIds, setExcludeIds] = useState<number[]>([]);
 
@@ -37,10 +37,11 @@ export default function RecommendPage() {
 
   useEffect(() => {
     if (!session?.user) return;
-    fetchRecommendations();
+    fetchRecommendations("all");
   }, [session]);
 
-  async function fetchRecommendations(genreOverride?: string) {
+  // mode: "all" = no genre filter, specific genre string = filter by that genre
+  async function fetchRecommendations(genreFilter: string) {
     setLoading(true);
     setError("");
     setPage(1);
@@ -84,9 +85,9 @@ export default function RecommendPage() {
       setTopGenres(sortedGenres);
       setAnalyzedTags(sortedTags);
 
-      // Use genre override or analyzed genres
-      const useGenres = genreOverride ? [genreOverride] : sortedGenres;
-      setAnalyzedGenres(useGenres);
+      // "all" = empty genres array (no filter), otherwise single genre
+      const useGenres = genreFilter === "all" ? [] : [genreFilter];
+      setCurrentGenres(useGenres);
 
       const result = await getRecommendations(useGenres, sortedTags, ids, 1);
       setRecommendations(result.media);
@@ -101,7 +102,7 @@ export default function RecommendPage() {
     setLoadingMore(true);
     const nextPage = page + 1;
     try {
-      const result = await getRecommendations(analyzedGenres, analyzedTags, excludeIds, nextPage);
+      const result = await getRecommendations(currentGenres, analyzedTags, excludeIds, nextPage);
       setRecommendations((prev) => [...prev, ...result.media]);
       setHasNextPage(result.pageInfo.hasNextPage);
       setPage(nextPage);
@@ -113,12 +114,7 @@ export default function RecommendPage() {
 
   function handleGenreFilter(genre: string) {
     setSelectedGenre(genre);
-    if (genre) {
-      setAnalyzedGenres([genre]);
-      fetchRecommendations(genre);
-    } else {
-      fetchRecommendations();
-    }
+    fetchRecommendations(genre || "all");
   }
 
   async function handleWatchToggle(anime: Anime) {
@@ -160,25 +156,25 @@ export default function RecommendPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">智能推荐</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">智能推荐</h1>
+        <p className="mt-1 text-xs text-gray-500 sm:text-sm">
           根据你的观看记录和品味，为你推荐相似的优秀番剧
         </p>
       </div>
 
       {/* Taste Profile */}
       {topGenres.length > 0 && (
-        <div className="mb-6 rounded-xl border border-gray-800 bg-gray-900 p-4">
-          <h3 className="mb-2 text-sm font-medium text-gray-400">
+        <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:mb-6 sm:p-4">
+          <h3 className="mb-2 text-xs font-medium text-gray-400 sm:text-sm">
             你偏好的类型：
           </h3>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {topGenres.map((genre) => (
               <span
                 key={genre}
-                className={`rounded-full border px-3 py-1 text-sm font-medium ${getGenreColor(genre)}`}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium sm:px-3 sm:py-1 sm:text-sm ${getGenreColor(genre)}`}
               >
                 {GENRE_CN[genre] || genre}
               </span>
@@ -188,12 +184,12 @@ export default function RecommendPage() {
       )}
 
       {/* Genre Filter */}
-      <div className="mb-6">
-        <h3 className="mb-2 text-sm font-medium text-gray-400">按类型筛选：</h3>
+      <div className="mb-4 sm:mb-6">
+        <h3 className="mb-2 text-xs font-medium text-gray-400 sm:text-sm">按类型筛选：</h3>
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => handleGenreFilter("")}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
               !selectedGenre
                 ? "bg-sky-500/20 text-sky-400 border border-sky-500/40"
                 : "bg-gray-800 text-gray-400 border border-transparent hover:bg-gray-700"
@@ -205,7 +201,7 @@ export default function RecommendPage() {
             <button
               key={genre}
               onClick={() => handleGenreFilter(genre)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                 selectedGenre === genre
                   ? getGenreColor(genre)
                   : "border-transparent bg-gray-800 text-gray-400 hover:bg-gray-700"
@@ -219,7 +215,7 @@ export default function RecommendPage() {
 
       {error ? (
         <div className="py-20 text-center">
-          <p className="text-lg text-gray-500">{error}</p>
+          <p className="text-base text-gray-500 sm:text-lg">{error}</p>
           {error.includes("添加") && (
             <button
               onClick={() => router.push("/")}
@@ -243,11 +239,11 @@ export default function RecommendPage() {
             onWatchToggle={handleWatchToggle}
           />
           {hasNextPage && (
-            <div className="mt-8 text-center">
+            <div className="mt-6 text-center sm:mt-8">
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="rounded-xl bg-gray-800 px-8 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-xl bg-gray-800 px-6 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50 sm:px-8 sm:py-3"
               >
                 {loadingMore ? "加载中..." : "加载更多"}
               </button>

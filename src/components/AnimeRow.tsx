@@ -57,7 +57,7 @@ export default function AnimeRow({
         style={{ scrollbarWidth: "none" }}
       >
         {animeList.map((anime) => (
-          <div key={anime.id} className="w-44 shrink-0 sm:w-48">
+          <div key={anime.id} className="w-36 shrink-0 sm:w-44 md:w-48">
             <AnimeCard
               anime={anime}
               watchedIds={watchedIds}

@@ -85,11 +85,11 @@ export default function WatchedPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">
+    <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8">
+      <div className="mb-4 flex items-center justify-between sm:mb-6">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">
           我的已看列表
-          <span className="ml-2 text-lg font-normal text-gray-500">
+          <span className="ml-2 text-base font-normal text-gray-500 sm:text-lg">
             ({watchedList.length} 部)
           </span>
         </h1>

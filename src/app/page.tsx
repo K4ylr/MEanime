@@ -189,20 +189,20 @@ export default function HomePage() {
         : "";
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8">
       {/* Hero */}
-      <div className="mb-6 text-center">
-        <h1 className="mb-2 text-4xl font-bold text-sky-400">MEanime</h1>
-        <p className="text-gray-400">记录你的番剧旅程，发现更多好番</p>
+      <div className="mb-4 text-center sm:mb-6">
+        <h1 className="mb-1 text-2xl font-bold text-sky-400 sm:mb-2 sm:text-4xl">MEanime</h1>
+        <p className="text-sm text-gray-400 sm:text-base">记录你的番剧旅程，发现更多好番</p>
       </div>
 
       {/* Search */}
-      <div className="mx-auto mb-4 max-w-xl">
+      <div className="mx-auto mb-3 max-w-xl sm:mb-4">
         <SearchBar onSearch={handleSearch} placeholder="搜索番剧名称..." />
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex justify-center">
+      <div className="mb-4 sm:mb-6">
         <FilterBar filters={filters} onChange={handleFilterChange} />
       </div>
 

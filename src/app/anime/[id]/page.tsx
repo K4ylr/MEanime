@@ -169,12 +169,12 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      <div className="mx-auto max-w-6xl px-4">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4">
         {/* Main info */}
-        <div className={`flex flex-col gap-6 sm:flex-row ${anime.bannerImage ? "-mt-24 relative z-10" : "pt-8"}`}>
+        <div className={`flex flex-col gap-4 sm:flex-row sm:gap-6 ${anime.bannerImage ? "-mt-16 sm:-mt-24 relative z-10" : "pt-6 sm:pt-8"}`}>
           {/* Cover */}
           <div className="shrink-0">
-            <div className="relative mx-auto h-72 w-48 overflow-hidden rounded-xl shadow-2xl sm:mx-0 sm:h-80 sm:w-56">
+            <div className="relative mx-auto h-56 w-40 overflow-hidden rounded-xl shadow-2xl sm:mx-0 sm:h-80 sm:w-56">
               <Image
                 src={anime.coverImage.large}
                 alt={displayTitle}
@@ -215,8 +215,8 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Info */}
-          <div className="flex-1 pt-4 sm:pt-28">
-            <h1 className="text-2xl font-bold text-white sm:text-3xl">{displayTitle}</h1>
+          <div className="flex-1 pt-2 sm:pt-28">
+            <h1 className="text-xl font-bold text-white sm:text-2xl md:text-3xl">{displayTitle}</h1>
             <div className="mt-2 space-y-0.5">
               {anime.title.native && (
                 <p className="text-sm text-gray-400">{anime.title.native}</p>

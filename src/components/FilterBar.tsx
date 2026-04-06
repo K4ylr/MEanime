@@ -50,7 +50,7 @@ function SelectDropdown({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-300 outline-none transition-colors focus:border-sky-500 hover:border-gray-600"
+      className="rounded-lg border border-gray-700 bg-gray-800 px-2 py-1.5 text-xs text-gray-300 outline-none transition-colors focus:border-sky-500 hover:border-gray-600 sm:px-3 sm:py-2 sm:text-sm"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
