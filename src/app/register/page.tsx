@@ -40,13 +40,20 @@ export default function RegisterPage() {
       }
 
       // Auto login after register
-      await signIn("credentials", {
+      const loginRes = await signIn("credentials", {
         username,
         password,
         redirect: false,
       });
 
-      window.location.href = "/";
+      if (!loginRes || loginRes.error || !loginRes.ok) {
+        // Registration succeeded but auto-login failed, redirect to login
+        window.location.replace("/login");
+        return;
+      }
+
+      await new Promise((r) => setTimeout(r, 300));
+      window.location.replace("/");
     } catch {
       setError("服务器连接失败，请检查后重试");
       setLoading(false);

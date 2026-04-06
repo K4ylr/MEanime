@@ -24,12 +24,15 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      if (res?.error) {
+      if (!res || res.error || !res.ok) {
         setError("用户名或密码错误");
         setLoading(false);
-      } else {
-        window.location.href = "/";
+        return;
       }
+
+      // Wait briefly for cookie to be set before redirect
+      await new Promise((r) => setTimeout(r, 300));
+      window.location.replace("/");
     } catch {
       setError("服务器连接失败，请检查后重试");
       setLoading(false);
