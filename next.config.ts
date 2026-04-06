@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "s4.anilist.co",
       },
+      {
+        protocol: "https",
+        hostname: "lain.bgm.tv",
+      },
+      {
+        protocol: "https",
+        hostname: "img.anilist.co",
+      },
     ],
   },
 };

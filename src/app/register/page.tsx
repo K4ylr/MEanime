@@ -71,7 +71,7 @@ export default function RegisterPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-purple-500"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-sky-500"
                 required
                 minLength={2}
                 maxLength={20}
@@ -84,7 +84,7 @@ export default function RegisterPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-purple-500"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-sky-500"
                 required
                 minLength={6}
               />
@@ -98,7 +98,7 @@ export default function RegisterPage() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-purple-500"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-sky-500"
                 required
                 minLength={6}
               />
@@ -111,7 +111,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-purple-600 py-2.5 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-50"
+              className="w-full rounded-lg bg-sky-600 py-2.5 font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-50"
             >
               {loading ? "注册中..." : "注册"}
             </button>
@@ -121,7 +121,7 @@ export default function RegisterPage() {
             已有账号？{" "}
             <Link
               href="/login"
-              className="text-purple-400 hover:text-purple-300"
+              className="text-sky-400 hover:text-sky-300"
             >
               登录
             </Link>

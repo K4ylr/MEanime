@@ -1,26 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Anime } from "@/lib/types";
-import { getBahamutUrl, getBilibiliUrl } from "@/lib/links";
-import AnimeDetailModal from "./AnimeDetailModal";
-import WatchedButton from "./WatchedButton";
+import { getGenreColor } from "@/lib/genreColors";
+import { GENRE_CN } from "@/lib/genreColors";
+
+// Global client-side cache for Chinese titles
+const cnTitleCache = new Map<number, string | null>();
+
+function useChineseTitle(anime: Anime): string | null {
+  const [cnTitle, setCnTitle] = useState<string | null>(
+    anime.chineseTitle || cnTitleCache.get(anime.id) || null
+  );
+
+  useEffect(() => {
+    if (cnTitle || cnTitleCache.has(anime.id)) return;
+    const keyword = anime.title.native || anime.title.romaji;
+    fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        cnTitleCache.set(anime.id, data.title);
+        if (data.title) setCnTitle(data.title);
+      })
+      .catch(() => {
+        cnTitleCache.set(anime.id, null);
+      });
+  }, [anime.id, anime.title.native, anime.title.romaji, cnTitle]);
+
+  return cnTitle;
+}
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score == null) return null;
   const color =
     score >= 75
-      ? "bg-green-500/20 text-green-400"
+      ? "bg-green-500/20 text-green-400 border-green-500/40"
       : score >= 50
-        ? "bg-yellow-500/20 text-yellow-400"
-        : "bg-red-500/20 text-red-400";
+        ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/40"
+        : "bg-red-500/20 text-red-400 border-red-500/40";
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${color}`}>
-      {score}
+    <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${color}`}>
+      {score}%
     </span>
   );
 }
+
+const STATUS_CN: Record<string, string> = {
+  FINISHED: "完结",
+  RELEASING: "连载中",
+  NOT_YET_RELEASED: "未放送",
+  CANCELLED: "已取消",
+  HIATUS: "休刊中",
+};
+
+const FORMAT_CN: Record<string, string> = {
+  TV: "TV",
+  TV_SHORT: "短篇",
+  MOVIE: "剧场版",
+  SPECIAL: "特别篇",
+  OVA: "OVA",
+  ONA: "ONA",
+  MUSIC: "音乐",
+};
+
+const SEASON_CN: Record<string, string> = {
+  WINTER: "冬",
+  SPRING: "春",
+  SUMMER: "夏",
+  FALL: "秋",
+};
 
 export default function AnimeCard({
   anime,
@@ -31,107 +81,91 @@ export default function AnimeCard({
   watchedIds: Set<number>;
   onWatchToggle: (anime: Anime) => void;
 }) {
-  const [showDetail, setShowDetail] = useState(false);
-  const title = anime.title.native || anime.title.romaji;
+  const [hovered, setHovered] = useState(false);
+  const cnTitle = useChineseTitle(anime);
+  const displayTitle = cnTitle || anime.title.english || anime.title.romaji;
   const isWatched = watchedIds.has(anime.id);
 
+  const studioName = anime.studios?.nodes?.[0]?.name;
+
   return (
-    <>
-      <div className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
-        {/* Cover Image */}
-        <div
-          className="relative aspect-[3/4] cursor-pointer overflow-hidden"
-          onClick={() => setShowDetail(true)}
-        >
-          <Image
-            src={anime.coverImage.large}
-            alt={title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-
-          {/* Score Badge */}
-          <div className="absolute right-2 top-2">
-            <ScoreBadge score={anime.averageScore} />
-          </div>
+    <div
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/50 hover:shadow-lg hover:shadow-sky-500/10"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Cover Image */}
+      <Link href={`/anime/${anime.id}`} className="relative aspect-[3/4] overflow-hidden">
+        <Image
+          src={anime.coverImage.large}
+          alt={displayTitle}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="absolute right-2 top-2">
+          <ScoreBadge score={anime.averageScore} />
         </div>
+      </Link>
 
-        {/* Info */}
-        <div className="flex flex-1 flex-col gap-2 p-3">
-          <h3
-            className="line-clamp-2 cursor-pointer text-sm font-semibold text-gray-100 transition-colors hover:text-purple-300"
-            onClick={() => setShowDetail(true)}
-          >
-            {title}
+      {/* Title & quick info */}
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <Link href={`/anime/${anime.id}`}>
+          <h3 className="line-clamp-2 text-sm font-semibold text-gray-100 transition-colors hover:text-sky-300">
+            {displayTitle}
           </h3>
-
-          {anime.title.english && anime.title.english !== title && (
-            <p className="line-clamp-1 text-xs text-gray-500">
-              {anime.title.english}
-            </p>
-          )}
-
-          {/* Genres */}
-          <div className="flex flex-wrap gap-1">
-            {anime.genres.slice(0, 3).map((genre) => (
-              <span
-                key={genre}
-                className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400"
-              >
-                {genre}
-              </span>
-            ))}
-          </div>
-
-          {/* Episodes & Status */}
-          <div className="mt-auto flex items-center gap-2 text-xs text-gray-500">
-            {anime.episodes && <span>{anime.episodes} 集</span>}
-            {anime.status && (
-              <span>
-                {anime.status === "FINISHED"
-                  ? "完结"
-                  : anime.status === "RELEASING"
-                    ? "连载中"
-                    : anime.status === "NOT_YET_RELEASED"
-                      ? "未放送"
-                      : anime.status}
-              </span>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 pt-1">
-            <WatchedButton
-              isWatched={isWatched}
-              onClick={() => onWatchToggle(anime)}
-            />
-            <a
-              href={getBahamutUrl(anime.title.native, anime.title.romaji)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 rounded-lg bg-orange-600/20 py-1.5 text-center text-xs font-medium text-orange-400 transition-colors hover:bg-orange-600/30"
-              title="在动画疯观看"
+        </Link>
+        <div className="flex flex-wrap gap-1">
+          {anime.genres.slice(0, 3).map((genre) => (
+            <span
+              key={genre}
+              className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${getGenreColor(genre)}`}
             >
-              动画疯
-            </a>
-            <a
-              href={getBilibiliUrl(anime.title.native, anime.title.romaji)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 rounded-lg bg-sky-600/20 py-1.5 text-center text-xs font-medium text-sky-400 transition-colors hover:bg-sky-600/30"
-              title="在B站观看"
-            >
-              B站
-            </a>
-          </div>
+              {GENRE_CN[genre] || genre}
+            </span>
+          ))}
         </div>
       </div>
 
-      {showDetail && (
-        <AnimeDetailModal anime={anime} onClose={() => setShowDetail(false)} />
+      {/* Hover info panel */}
+      {hovered && (
+        <div className="absolute left-0 right-0 bottom-0 z-20 rounded-b-xl border-t border-gray-700 bg-gray-900/95 p-3 backdrop-blur-sm">
+          {anime.seasonYear && anime.season && (
+            <p className="text-xs text-gray-400">
+              {anime.seasonYear} {SEASON_CN[anime.season] || anime.season}季
+            </p>
+          )}
+          {studioName && (
+            <p className="text-xs text-sky-400">{studioName}</p>
+          )}
+          <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+            {anime.format && <span>{FORMAT_CN[anime.format] || anime.format}</span>}
+            {anime.episodes && <span>{anime.episodes} 集</span>}
+            {anime.status && <span>{STATUS_CN[anime.status] || anime.status}</span>}
+          </div>
+          {anime.nextAiringEpisode && (
+            <p className="mt-1 text-xs text-teal-400">
+              第 {anime.nextAiringEpisode.episode} 集即将播出
+            </p>
+          )}
+          <div className="mt-2 flex gap-1.5">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onWatchToggle(anime);
+              }}
+              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-medium transition-colors ${
+                isWatched
+                  ? "bg-teal-500/20 text-teal-400 hover:bg-teal-500/30"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              {isWatched ? "已看 ✓" : "+ 已看"}
+            </button>
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }

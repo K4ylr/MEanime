@@ -19,7 +19,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link
           href="/"
-          className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-xl font-bold text-transparent"
+          className="text-xl font-bold text-sky-400"
         >
           MEanime
         </Link>
@@ -31,7 +31,7 @@ export default function Navbar() {
               href={link.href}
               className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 pathname === link.href
-                  ? "bg-purple-500/20 text-purple-300"
+                  ? "bg-sky-500/20 text-sky-300"
                   : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               }`}
             >
@@ -56,7 +56,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-purple-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+              className="rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-sky-500"
             >
               登录
             </Link>

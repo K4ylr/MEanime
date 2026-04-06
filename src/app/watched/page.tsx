@@ -4,14 +4,45 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { WatchedAnime } from "@/lib/types";
 import { getBahamutUrl, getBilibiliUrl } from "@/lib/links";
+import { getGenreColor, GENRE_CN } from "@/lib/genreColors";
+
+// Client-side Chinese title cache
+const cnTitleCache = new Map<number, string | null>();
+
+function useChineseTitles(watchedList: WatchedAnime[]) {
+  const [titles, setTitles] = useState<Map<number, string | null>>(new Map());
+
+  useEffect(() => {
+    watchedList.forEach((anime) => {
+      if (cnTitleCache.has(anime.anilistId)) {
+        setTitles((prev) => new Map(prev).set(anime.anilistId, cnTitleCache.get(anime.anilistId) || null));
+        return;
+      }
+      const keyword = anime.titleNative || anime.titleRomaji;
+      fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          cnTitleCache.set(anime.anilistId, data.title);
+          setTitles((prev) => new Map(prev).set(anime.anilistId, data.title));
+        })
+        .catch(() => {
+          cnTitleCache.set(anime.anilistId, null);
+        });
+    });
+  }, [watchedList]);
+
+  return titles;
+}
 
 export default function WatchedPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [watchedList, setWatchedList] = useState<WatchedAnime[]>([]);
   const [loading, setLoading] = useState(true);
+  const cnTitles = useChineseTitles(watchedList);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -48,7 +79,7 @@ export default function WatchedPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
       </div>
     );
   }
@@ -74,10 +105,10 @@ export default function WatchedPage() {
             {topGenres.map(([genre, count]) => (
               <span
                 key={genre}
-                className="rounded-full bg-purple-500/20 px-3 py-1 text-sm text-purple-300"
+                className={`rounded-full border px-3 py-1 text-sm font-medium ${getGenreColor(genre)}`}
               >
-                {genre}{" "}
-                <span className="text-purple-500">×{count}</span>
+                {GENRE_CN[genre] || genre}{" "}
+                <span className="opacity-60">x{count}</span>
               </span>
             ))}
           </div>
@@ -94,39 +125,43 @@ export default function WatchedPage() {
       ) : (
         <div className="space-y-3">
           {watchedList.map((anime) => {
-            const title = anime.titleNative || anime.titleRomaji;
+            const cnTitle = cnTitles.get(anime.anilistId);
+            const displayTitle = cnTitle || anime.titleEnglish || anime.titleRomaji;
+            const bilibiliUrl = getBilibiliUrl(cnTitle || null, anime.titleEnglish, anime.titleRomaji);
             return (
               <div
                 key={anime.id}
                 className="flex gap-4 rounded-xl border border-gray-800 bg-gray-900 p-3 transition-colors hover:border-gray-700"
               >
                 {/* Cover */}
-                <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg">
+                <Link href={`/anime/${anime.anilistId}`} className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg">
                   <Image
                     src={anime.coverImage}
-                    alt={title}
+                    alt={displayTitle}
                     fill
                     className="object-cover"
                     sizes="64px"
                   />
-                </div>
+                </Link>
 
                 {/* Info */}
                 <div className="flex flex-1 flex-col justify-between">
                   <div>
-                    <h3 className="font-semibold text-gray-100">{title}</h3>
-                    {anime.titleEnglish && (
-                      <p className="text-xs text-gray-500">
-                        {anime.titleEnglish}
-                      </p>
+                    <Link href={`/anime/${anime.anilistId}`}>
+                      <h3 className="font-semibold text-gray-100 hover:text-sky-300 transition-colors">
+                        {displayTitle}
+                      </h3>
+                    </Link>
+                    {anime.titleNative && anime.titleNative !== displayTitle && (
+                      <p className="text-xs text-gray-500">{anime.titleNative}</p>
                     )}
                     <div className="mt-1 flex flex-wrap gap-1">
                       {anime.genres.slice(0, 4).map((g) => (
                         <span
                           key={g}
-                          className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400"
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getGenreColor(g)}`}
                         >
-                          {g}
+                          {GENRE_CN[g] || g}
                         </span>
                       ))}
                     </div>
@@ -143,7 +178,7 @@ export default function WatchedPage() {
                               : "text-red-400"
                         }
                       >
-                        评分 {anime.averageScore}
+                        {anime.averageScore}%
                       </span>
                     )}
                     {anime.episodes && <span>{anime.episodes} 集</span>}
@@ -164,10 +199,7 @@ export default function WatchedPage() {
                   </button>
                   <div className="flex gap-1">
                     <a
-                      href={getBahamutUrl(
-                        anime.titleNative,
-                        anime.titleRomaji
-                      )}
+                      href={getBahamutUrl(anime.titleNative, anime.titleRomaji)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="rounded bg-orange-600/20 px-2 py-1 text-xs text-orange-400 hover:bg-orange-600/30"
@@ -175,10 +207,7 @@ export default function WatchedPage() {
                       动画疯
                     </a>
                     <a
-                      href={getBilibiliUrl(
-                        anime.titleNative,
-                        anime.titleRomaji
-                      )}
+                      href={bilibiliUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="rounded bg-sky-600/20 px-2 py-1 text-xs text-sky-400 hover:bg-sky-600/30"

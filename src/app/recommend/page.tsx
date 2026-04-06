@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import AnimeGrid from "@/components/AnimeGrid";
 import LoadingGrid from "@/components/LoadingGrid";
 import { Anime, WatchedAnime, AnimeTag } from "@/lib/types";
+import { getRecommendations } from "@/lib/anilist";
+import { ALL_GENRES, GENRE_CN, getGenreColor } from "@/lib/genreColors";
 
 export default function RecommendPage() {
   const { data: session, status } = useSession();
@@ -15,6 +17,17 @@ export default function RecommendPage() {
   const [topGenres, setTopGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Genre filter
+  const [selectedGenre, setSelectedGenre] = useState<string>("");
+
+  // Store analyzed data for pagination
+  const [analyzedGenres, setAnalyzedGenres] = useState<string[]>([]);
+  const [analyzedTags, setAnalyzedTags] = useState<string[]>([]);
+  const [excludeIds, setExcludeIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -27,12 +40,12 @@ export default function RecommendPage() {
     fetchRecommendations();
   }, [session]);
 
-  async function fetchRecommendations() {
+  async function fetchRecommendations(genreOverride?: string) {
     setLoading(true);
     setError("");
+    setPage(1);
 
     try {
-      // Get watched list
       const watchedRes = await fetch("/api/watched");
       const watchedData: WatchedAnime[] = await watchedRes.json();
 
@@ -44,11 +57,11 @@ export default function RecommendPage() {
 
       const ids = watchedData.map((w) => w.anilistId);
       setWatchedIds(new Set(ids));
+      setExcludeIds(ids);
 
-      // Analyze taste - count genres and tags
+      // Analyze taste
       const genreCount: Record<string, number> = {};
       const tagCount: Record<string, number> = {};
-
       watchedData.forEach((w) => {
         w.genres.forEach((g) => {
           genreCount[g] = (genreCount[g] || 0) + 1;
@@ -69,57 +82,47 @@ export default function RecommendPage() {
         .map(([t]) => t);
 
       setTopGenres(sortedGenres);
+      setAnalyzedTags(sortedTags);
 
-      // Query AniList for recommendations
-      const res = await fetch("https://graphql.anilist.co", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: `query ($genres: [String], $idNotIn: [Int]) {
-            Page(perPage: 30) {
-              media(type: ANIME, genre_in: $genres, id_not_in: $idNotIn, sort: SCORE_DESC, averageScore_greater: 60) {
-                id title { romaji native english }
-                coverImage { large } averageScore genres
-                episodes status description format season seasonYear
-                tags { name rank }
-              }
-            }
-          }`,
-          variables: {
-            genres: sortedGenres.length > 0 ? sortedGenres : undefined,
-            idNotIn: ids.length > 0 ? ids : undefined,
-          },
-        }),
-      });
+      // Use genre override or analyzed genres
+      const useGenres = genreOverride ? [genreOverride] : sortedGenres;
+      setAnalyzedGenres(useGenres);
 
-      const json = await res.json();
-      let results: Anime[] = json.data.Page.media;
-
-      // Re-rank by tag match
-      if (sortedTags.length > 0) {
-        const tagSet = new Set(sortedTags.map((t) => t.toLowerCase()));
-        results = results.sort((a, b) => {
-          const aScore = a.tags.filter((t) =>
-            tagSet.has(t.name.toLowerCase())
-          ).length;
-          const bScore = b.tags.filter((t) =>
-            tagSet.has(t.name.toLowerCase())
-          ).length;
-          if (bScore !== aScore) return bScore - aScore;
-          return (b.averageScore || 0) - (a.averageScore || 0);
-        });
-      }
-
-      setRecommendations(results);
+      const result = await getRecommendations(useGenres, sortedTags, ids, 1);
+      setRecommendations(result.media);
+      setHasNextPage(result.pageInfo.hasNextPage);
     } catch {
       setError("获取推荐失败，请稍后重试");
     }
     setLoading(false);
   }
 
+  async function loadMore() {
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const result = await getRecommendations(analyzedGenres, analyzedTags, excludeIds, nextPage);
+      setRecommendations((prev) => [...prev, ...result.media]);
+      setHasNextPage(result.pageInfo.hasNextPage);
+      setPage(nextPage);
+    } catch {
+      // silent
+    }
+    setLoadingMore(false);
+  }
+
+  function handleGenreFilter(genre: string) {
+    setSelectedGenre(genre);
+    if (genre) {
+      setAnalyzedGenres([genre]);
+      fetchRecommendations(genre);
+    } else {
+      fetchRecommendations();
+    }
+  }
+
   async function handleWatchToggle(anime: Anime) {
     const isWatched = watchedIds.has(anime.id);
-
     if (isWatched) {
       await fetch(`/api/watched?anilistId=${anime.id}`, { method: "DELETE" });
       setWatchedIds((prev) => {
@@ -151,7 +154,7 @@ export default function RecommendPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
       </div>
     );
   }
@@ -169,20 +172,50 @@ export default function RecommendPage() {
       {topGenres.length > 0 && (
         <div className="mb-6 rounded-xl border border-gray-800 bg-gray-900 p-4">
           <h3 className="mb-2 text-sm font-medium text-gray-400">
-            因为你喜欢这些类型：
+            你偏好的类型：
           </h3>
           <div className="flex flex-wrap gap-2">
             {topGenres.map((genre) => (
               <span
                 key={genre}
-                className="rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-3 py-1 text-sm font-medium text-purple-300"
+                className={`rounded-full border px-3 py-1 text-sm font-medium ${getGenreColor(genre)}`}
               >
-                {genre}
+                {GENRE_CN[genre] || genre}
               </span>
             ))}
           </div>
         </div>
       )}
+
+      {/* Genre Filter */}
+      <div className="mb-6">
+        <h3 className="mb-2 text-sm font-medium text-gray-400">按类型筛选：</h3>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => handleGenreFilter("")}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              !selectedGenre
+                ? "bg-sky-500/20 text-sky-400 border border-sky-500/40"
+                : "bg-gray-800 text-gray-400 border border-transparent hover:bg-gray-700"
+            }`}
+          >
+            全部
+          </button>
+          {ALL_GENRES.map((genre) => (
+            <button
+              key={genre}
+              onClick={() => handleGenreFilter(genre)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                selectedGenre === genre
+                  ? getGenreColor(genre)
+                  : "border-transparent bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              {GENRE_CN[genre] || genre}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {error ? (
         <div className="py-20 text-center">
@@ -190,7 +223,7 @@ export default function RecommendPage() {
           {error.includes("添加") && (
             <button
               onClick={() => router.push("/")}
-              className="mt-4 rounded-lg bg-purple-600 px-6 py-2 text-white hover:bg-purple-500"
+              className="mt-4 rounded-lg bg-sky-600 px-6 py-2 text-white hover:bg-sky-500"
             >
               去首页添加番剧
             </button>
@@ -203,11 +236,24 @@ export default function RecommendPage() {
           暂无推荐结果，试试多添加一些已看番剧
         </div>
       ) : (
-        <AnimeGrid
-          animeList={recommendations}
-          watchedIds={watchedIds}
-          onWatchToggle={handleWatchToggle}
-        />
+        <>
+          <AnimeGrid
+            animeList={recommendations}
+            watchedIds={watchedIds}
+            onWatchToggle={handleWatchToggle}
+          />
+          {hasNextPage && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="rounded-xl bg-gray-800 px-8 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+              >
+                {loadingMore ? "加载中..." : "加载更多"}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
