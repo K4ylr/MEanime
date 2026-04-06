@@ -217,10 +217,10 @@ export async function getRecommendations(
 ): Promise<{ media: Anime[]; pageInfo: PageInfo }> {
   const query = `
     query ($genres: [String], $idNotIn: [Int], $page: Int) {
-      Page(page: $page, perPage: 20) {
+      Page(page: $page, perPage: 30) {
         pageInfo { hasNextPage currentPage lastPage }
         media(type: ANIME, genre_in: $genres, id_not_in: $idNotIn,
-              sort: POPULARITY_DESC, popularity_greater: 5000, averageScore_greater: 50) {
+              sort: POPULARITY_DESC, averageScore_greater: 40) {
           ${MEDIA_FIELDS_MINIMAL}
         }
       }
