@@ -445,8 +445,8 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
           </section>
         )}
 
-        {/* Bangumi Chinese Comments */}
-        {bgmComments.length > 0 && (
+        {/* Comments: Bangumi Chinese first, AniList fallback */}
+        {bgmComments.length > 0 ? (
           <section className="mt-12 pb-12">
             <h2 className="mb-4 text-lg font-bold text-white">用户短评</h2>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -467,7 +467,35 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
               ))}
             </div>
           </section>
-        )}
+        ) : reviews.length > 0 ? (
+          <section className="mt-12 pb-12">
+            <h2 className="mb-4 text-lg font-bold text-white">用户评价</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {reviews.map((review, idx) => (
+                <div key={idx} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                  <div className="flex items-center gap-3">
+                    {review.user.avatar?.medium && (
+                      <Image
+                        src={review.user.avatar.medium}
+                        alt={review.user.name}
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    )}
+                    <span className="text-sm font-medium text-gray-300">{review.user.name}</span>
+                    <span className={`ml-auto text-sm font-bold ${review.score >= 75 ? "text-green-400" : review.score >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                      {review.score}/100
+                    </span>
+                  </div>
+                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-gray-400">
+                    {review.summary}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );
