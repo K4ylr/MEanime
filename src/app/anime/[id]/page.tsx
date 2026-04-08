@@ -34,7 +34,9 @@ const SEASON_CN: Record<string, string> = {
   FALL: "秋",
 };
 
-// Chinese title fetcher
+// Chinese title cache (shared across components on this page)
+const cnCache = new Map<string, string | null>();
+
 async function fetchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null }> {
   try {
     const res = await fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`);
@@ -43,6 +45,52 @@ async function fetchChineseInfo(keyword: string): Promise<{ title: string | null
   } catch {
     return { title: null, summary: null };
   }
+}
+
+function useChineseTitle(keyword: string | null) {
+  const [cnTitle, setCnTitle] = useState<string | null>(null);
+  useEffect(() => {
+    if (!keyword) return;
+    if (cnCache.has(keyword)) {
+      setCnTitle(cnCache.get(keyword) || null);
+      return;
+    }
+    fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        cnCache.set(keyword, d.title || null);
+        setCnTitle(d.title || null);
+      })
+      .catch(() => {});
+  }, [keyword]);
+  return cnTitle;
+}
+
+function RecCard({ rec }: { rec: Anime }) {
+  const keyword = rec.title.native || rec.title.romaji;
+  const cnTitle = useChineseTitle(keyword);
+  const displayTitle = cnTitle || rec.title.english || rec.title.romaji;
+  return (
+    <Link href={`/anime/${rec.id}`} className="group w-36 shrink-0 sm:w-40">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
+        <Image
+          src={rec.coverImage.large}
+          alt={displayTitle}
+          fill
+          className="object-cover transition-transform group-hover:scale-105"
+          sizes="160px"
+        />
+      </div>
+      <p className="mt-2 line-clamp-2 text-sm text-gray-300 group-hover:text-sky-300">
+        {displayTitle}
+      </p>
+      {rec.averageScore && (
+        <p className={`text-xs ${rec.averageScore >= 75 ? "text-green-400" : rec.averageScore >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+          {rec.averageScore}%
+        </p>
+      )}
+    </Link>
+  );
 }
 
 function ScoreCircle({ score }: { score: number | null }) {
@@ -357,12 +405,10 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
               ))}
             </div>
 
-            {/* Description */}
-            {(cnSummary || anime.description) && (
+            {/* Description - only show Chinese summary */}
+            {cnSummary && (
               <div className="mt-4">
-                <p className="leading-relaxed text-gray-300">
-                  {cnSummary || anime.description?.replace(/<[^>]*>/g, "")}
-                </p>
+                <p className="leading-relaxed text-gray-300">{cnSummary}</p>
               </div>
             )}
 
@@ -385,29 +431,7 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
             <h2 className="mb-4 text-lg font-bold text-white">相似推荐</h2>
             <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
               {recommendations.map((rec) => (
-                <Link
-                  key={rec.id}
-                  href={`/anime/${rec.id}`}
-                  className="group w-36 shrink-0 sm:w-40"
-                >
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
-                    <Image
-                      src={rec.coverImage.large}
-                      alt={rec.title.romaji}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
-                      sizes="160px"
-                    />
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm text-gray-300 group-hover:text-sky-300">
-                    {rec.title.english || rec.title.romaji}
-                  </p>
-                  {rec.averageScore && (
-                    <p className={`text-xs ${rec.averageScore >= 75 ? "text-green-400" : rec.averageScore >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-                      {rec.averageScore}%
-                    </p>
-                  )}
-                </Link>
+                <RecCard key={rec.id} rec={rec} />
               ))}
             </div>
           </section>
