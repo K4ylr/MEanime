@@ -7,10 +7,56 @@ import { Anime, WatchStatus, WATCH_STATUS_CN } from "@/lib/types";
 import { getGenreColor } from "@/lib/genreColors";
 import { GENRE_CN } from "@/lib/genreColors";
 
-// Use pre-fetched Chinese title from batch API, no individual requests
+// Global client-side cache for Chinese titles (persists across navigations)
+const cnTitleCache = new Map<number, string | null>();
+
 function useChineseTitle(anime: Anime): string | null {
-  return anime.chineseTitle || null;
+  const [cnTitle, setCnTitle] = useState<string | null>(
+    anime.chineseTitle || cnTitleCache.get(anime.id) || null
+  );
+
+  useEffect(() => {
+    // Already have a title
+    if (anime.chineseTitle) {
+      cnTitleCache.set(anime.id, anime.chineseTitle);
+      setCnTitle(anime.chineseTitle);
+      return;
+    }
+    // Already fetched (even if null)
+    if (cnTitleCache.has(anime.id)) {
+      setCnTitle(cnTitleCache.get(anime.id) || null);
+      return;
+    }
+    // Fetch from Bangumi
+    const keyword = anime.title.native || anime.title.romaji;
+    fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const title = data.title || null;
+        cnTitleCache.set(anime.id, title);
+        if (title) setCnTitle(title);
+        // If first keyword didn't match, try English title
+        if (!title && anime.title.english && anime.title.english !== keyword) {
+          return fetch(`/api/chinese-title?keyword=${encodeURIComponent(anime.title.english)}`)
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.title) {
+                cnTitleCache.set(anime.id, d.title);
+                setCnTitle(d.title);
+              }
+            });
+        }
+      })
+      .catch(() => {
+        cnTitleCache.set(anime.id, null);
+      });
+  }, [anime]);
+
+  return cnTitle;
 }
+
+// Export cache for other components to populate
+export { cnTitleCache };
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score == null) return null;
@@ -65,7 +111,8 @@ export default function AnimeCard({
 }) {
   const [hovered, setHovered] = useState(false);
   const cnTitle = useChineseTitle(anime);
-  const displayTitle = cnTitle || anime.title.english || anime.title.romaji;
+  // Prefer Chinese title, fallback to Japanese native title (never English)
+  const displayTitle = cnTitle || anime.title.native || anime.title.romaji;
   const isWatched = watchedIds.has(anime.id);
 
   const studioName = anime.studios?.nodes?.[0]?.name;

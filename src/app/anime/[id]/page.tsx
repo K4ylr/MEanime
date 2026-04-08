@@ -69,7 +69,7 @@ function useChineseTitle(keyword: string | null) {
 function RecCard({ rec }: { rec: Anime }) {
   const keyword = rec.title.native || rec.title.romaji;
   const cnTitle = useChineseTitle(keyword);
-  const displayTitle = cnTitle || rec.title.english || rec.title.romaji;
+  const displayTitle = cnTitle || rec.title.native || rec.title.romaji;
   return (
     <Link href={`/anime/${rec.id}`} className="group w-36 shrink-0 sm:w-40">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
