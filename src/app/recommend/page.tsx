@@ -9,6 +9,31 @@ import { Anime, WatchedAnime, AnimeTag, WatchStatus } from "@/lib/types";
 import { getRecommendations } from "@/lib/anilist";
 import { ALL_GENRES, GENRE_CN, getGenreColor } from "@/lib/genreColors";
 
+async function injectChineseTitles(animeList: Anime[]): Promise<Anime[]> {
+  if (animeList.length === 0) return animeList;
+  try {
+    const items = animeList.map((a) => ({
+      id: a.id,
+      native: a.title.native,
+      romaji: a.title.romaji,
+      english: a.title.english,
+    }));
+    const res = await fetch("/api/chinese-titles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+    const titles: Record<string, string> = data.titles || {};
+    return animeList.map((a) => ({
+      ...a,
+      chineseTitle: titles[a.id] || a.chineseTitle,
+    }));
+  } catch {
+    return animeList;
+  }
+}
+
 export default function RecommendPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -90,7 +115,8 @@ export default function RecommendPage() {
       setCurrentGenres(useGenres);
 
       const result = await getRecommendations(useGenres, sortedTags, ids, 1);
-      setRecommendations(result.media);
+      const withCn = await injectChineseTitles(result.media);
+      setRecommendations(withCn);
       setHasNextPage(result.pageInfo.hasNextPage);
     } catch {
       setError("获取推荐失败，请稍后重试");
@@ -103,7 +129,8 @@ export default function RecommendPage() {
     const nextPage = page + 1;
     try {
       const result = await getRecommendations(currentGenres, analyzedTags, excludeIds, nextPage);
-      setRecommendations((prev) => [...prev, ...result.media]);
+      const withCn = await injectChineseTitles(result.media);
+      setRecommendations((prev) => [...prev, ...withCn]);
       setHasNextPage(result.pageInfo.hasNextPage);
       setPage(nextPage);
     } catch {

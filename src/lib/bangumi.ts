@@ -23,10 +23,27 @@ function isChinese(text: string): boolean {
   return cnChars.length / text.length > 0.2;
 }
 
+// Search Bangumi for a single keyword, return raw results
+async function searchBangumi(keyword: string): Promise<{ name_cn?: string; summary?: string }[]> {
+  try {
+    const res = await fetch(
+      `${BGM_API}/search/subject/${encodeURIComponent(keyword)}?type=2&responseGroup=large`,
+      {
+        headers: { "User-Agent": "MEanime/1.0" },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.list || [];
+  } catch {
+    return [];
+  }
+}
+
 // Fetch Chinese summary from Chinese Wikipedia
 async function fetchWikiSummary(keyword: string): Promise<string | null> {
   try {
-    // Step 1: Search for the anime on Chinese Wikipedia
     const searchRes = await fetch(
       `${WIKI_API}?action=query&list=search&srsearch=${encodeURIComponent(keyword + " 动画")}&srnamespace=0&srlimit=3&format=json&origin=*`,
       { signal: AbortSignal.timeout(5000) }
@@ -36,7 +53,6 @@ async function fetchWikiSummary(keyword: string): Promise<string | null> {
     const results = searchData?.query?.search;
     if (!results || results.length === 0) return null;
 
-    // Step 2: Get the extract (intro paragraph) from the best match
     const title = results[0].title;
     const extractRes = await fetch(
       `${WIKI_API}?action=query&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(title)}&format=json&origin=*`,
@@ -51,10 +67,8 @@ async function fetchWikiSummary(keyword: string): Promise<string | null> {
     const extract = page?.extract;
     if (!extract || extract.length < 20) return null;
 
-    // Only return if it's actually Chinese content
     if (!isChinese(extract) || isJapanese(extract)) return null;
 
-    // Trim to a reasonable length (first ~500 chars)
     if (extract.length > 500) {
       const trimmed = extract.substring(0, 500);
       const lastPeriod = trimmed.lastIndexOf("。");
@@ -78,37 +92,24 @@ export async function searchChineseInfo(keyword: string): Promise<{ title: strin
   if (infoCache.has(keyword)) return infoCache.get(keyword)!;
 
   try {
-    // Step 1: Try Bangumi first
-    const res = await fetch(
-      `${BGM_API}/search/subject/${encodeURIComponent(keyword)}?type=2&responseGroup=large`,
-      {
-        headers: { "User-Agent": "MEanime/1.0" },
-        signal: AbortSignal.timeout(5000),
-      }
-    );
+    const list = await searchBangumi(keyword);
     let bestTitle: string | null = null;
     let bestSummary: string | null = null;
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.list && data.list.length > 0) {
-        for (const item of data.list.slice(0, 5)) {
-          if (!bestTitle && item.name_cn) {
-            bestTitle = item.name_cn;
-          }
-          if (!bestSummary && item.summary && !isJapanese(item.summary) && isChinese(item.summary)) {
-            bestSummary = item.summary;
-          }
-          if (bestTitle && bestSummary) break;
-        }
+    for (const item of list.slice(0, 5)) {
+      if (!bestTitle && item.name_cn) {
+        bestTitle = item.name_cn;
       }
+      if (!bestSummary && item.summary && !isJapanese(item.summary) && isChinese(item.summary)) {
+        bestSummary = item.summary;
+      }
+      if (bestTitle && bestSummary) break;
     }
 
-    // Step 2: If no Chinese summary from Bangumi, try Chinese Wikipedia
+    // Fallback to Wikipedia for summary
     if (!bestSummary) {
       const searchTerm = bestTitle || keyword;
       bestSummary = await fetchWikiSummary(searchTerm);
-      // If that didn't work and we used cnTitle, try with original keyword
       if (!bestSummary && searchTerm !== keyword) {
         bestSummary = await fetchWikiSummary(keyword);
       }
@@ -123,4 +124,62 @@ export async function searchChineseInfo(keyword: string): Promise<{ title: strin
     infoCache.set(keyword, result);
     return result;
   }
+}
+
+// Batch fetch Chinese titles for multiple anime
+// Tries multiple keywords per anime: native → romaji → english
+export async function batchSearchChineseTitles(
+  items: { id: number; native?: string | null; romaji?: string; english?: string | null }[]
+): Promise<Map<number, string>> {
+  const result = new Map<number, string>();
+  const toFetch: typeof items = [];
+
+  // Check cache first
+  for (const item of items) {
+    const keyword = item.native || item.romaji || "";
+    if (titleCache.has(keyword) && titleCache.get(keyword)) {
+      result.set(item.id, titleCache.get(keyword)!);
+    } else {
+      toFetch.push(item);
+    }
+  }
+
+  // Fetch remaining in parallel (max 10 concurrent)
+  const chunks: typeof items[] = [];
+  for (let i = 0; i < toFetch.length; i += 10) {
+    chunks.push(toFetch.slice(i, i + 10));
+  }
+
+  for (const chunk of chunks) {
+    const promises = chunk.map(async (item) => {
+      const keywords = [item.native, item.romaji, item.english].filter(Boolean) as string[];
+
+      for (const kw of keywords) {
+        if (titleCache.has(kw) && titleCache.get(kw)) {
+          result.set(item.id, titleCache.get(kw)!);
+          return;
+        }
+      }
+
+      // Try each keyword until we find a Chinese title
+      for (const kw of keywords) {
+        const list = await searchBangumi(kw);
+        for (const bgmItem of list.slice(0, 3)) {
+          if (bgmItem.name_cn) {
+            result.set(item.id, bgmItem.name_cn);
+            // Cache all keywords for this anime
+            for (const k of keywords) titleCache.set(k, bgmItem.name_cn);
+            return;
+          }
+        }
+      }
+
+      // No result found - cache as null
+      for (const k of keywords) titleCache.set(k, null);
+    });
+
+    await Promise.all(promises);
+  }
+
+  return result;
 }

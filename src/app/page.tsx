@@ -17,6 +17,32 @@ import {
   browseAnime,
 } from "@/lib/anilist";
 
+// Batch fetch Chinese titles and inject into anime objects
+async function injectChineseTitles(animeList: Anime[]): Promise<Anime[]> {
+  if (animeList.length === 0) return animeList;
+  try {
+    const items = animeList.map((a) => ({
+      id: a.id,
+      native: a.title.native,
+      romaji: a.title.romaji,
+      english: a.title.english,
+    }));
+    const res = await fetch("/api/chinese-titles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+    const titles: Record<string, string> = data.titles || {};
+    return animeList.map((a) => ({
+      ...a,
+      chineseTitle: titles[a.id] || a.chineseTitle,
+    }));
+  } catch {
+    return animeList;
+  }
+}
+
 type ViewMode = "sections" | "search" | "browse";
 
 export default function HomePage() {
@@ -54,7 +80,7 @@ export default function HomePage() {
       .catch(() => {});
   }, [session]);
 
-  // Fetch homepage sections
+  // Fetch homepage sections + Chinese titles
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -65,10 +91,16 @@ export default function HomePage() {
           getUpcomingNextSeason(),
           getAllTimePopular(),
         ]);
-        setTrending(t);
-        setPopular(p);
-        setUpcoming(u);
-        setAllTime(a);
+        // Batch fetch Chinese titles for all anime at once
+        const allAnime = [...t, ...p, ...u, ...a];
+        const withCn = await injectChineseTitles(allAnime);
+        const cnMap = new Map(withCn.map((x) => [x.id, x.chineseTitle]));
+        const inject = (list: Anime[]) =>
+          list.map((x) => ({ ...x, chineseTitle: cnMap.get(x.id) || x.chineseTitle }));
+        setTrending(inject(t));
+        setPopular(inject(p));
+        setUpcoming(inject(u));
+        setAllTime(inject(a));
       } catch {
         // silent
       }
@@ -88,7 +120,8 @@ export default function HomePage() {
     setLoading(true);
     try {
       const result = await searchAnime(query);
-      setSearchResults(result.media);
+      const withCn = await injectChineseTitles(result.media);
+      setSearchResults(withCn);
       setHasNextPage(result.pageInfo.hasNextPage);
       setBrowsePage(1);
     } catch {
@@ -115,7 +148,8 @@ export default function HomePage() {
         format: newFilters.format || undefined,
         status: newFilters.status || undefined,
       });
-      setSearchResults(result.media);
+      const withCn = await injectChineseTitles(result.media);
+      setSearchResults(withCn);
       setHasNextPage(result.pageInfo.hasNextPage);
       setBrowsePage(1);
     } catch {
@@ -138,7 +172,8 @@ export default function HomePage() {
             format: filters.format || undefined,
             status: filters.status || undefined,
           });
-      setSearchResults((prev) => [...prev, ...result.media]);
+      const withCn = await injectChineseTitles(result.media);
+      setSearchResults((prev) => [...prev, ...withCn]);
       setHasNextPage(result.pageInfo.hasNextPage);
       setBrowsePage(nextPage);
     } catch {

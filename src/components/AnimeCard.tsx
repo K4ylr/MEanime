@@ -7,29 +7,9 @@ import { Anime, WatchStatus, WATCH_STATUS_CN } from "@/lib/types";
 import { getGenreColor } from "@/lib/genreColors";
 import { GENRE_CN } from "@/lib/genreColors";
 
-// Global client-side cache for Chinese titles
-const cnTitleCache = new Map<number, string | null>();
-
+// Use pre-fetched Chinese title from batch API, no individual requests
 function useChineseTitle(anime: Anime): string | null {
-  const [cnTitle, setCnTitle] = useState<string | null>(
-    anime.chineseTitle || cnTitleCache.get(anime.id) || null
-  );
-
-  useEffect(() => {
-    if (cnTitle || cnTitleCache.has(anime.id)) return;
-    const keyword = anime.title.native || anime.title.romaji;
-    fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        cnTitleCache.set(anime.id, data.title);
-        if (data.title) setCnTitle(data.title);
-      })
-      .catch(() => {
-        cnTitleCache.set(anime.id, null);
-      });
-  }, [anime.id, anime.title.native, anime.title.romaji, cnTitle]);
-
-  return cnTitle;
+  return anime.chineseTitle || null;
 }
 
 function ScoreBadge({ score }: { score: number | null }) {
