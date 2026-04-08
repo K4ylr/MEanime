@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AnimeGrid from "@/components/AnimeGrid";
 import LoadingGrid from "@/components/LoadingGrid";
-import { Anime, WatchedAnime, AnimeTag } from "@/lib/types";
+import { Anime, WatchedAnime, AnimeTag, WatchStatus } from "@/lib/types";
 import { getRecommendations } from "@/lib/anilist";
 import { ALL_GENRES, GENRE_CN, getGenreColor } from "@/lib/genreColors";
 
@@ -117,14 +117,20 @@ export default function RecommendPage() {
     fetchRecommendations(genre || "all");
   }
 
-  async function handleWatchToggle(anime: Anime) {
+  async function handleWatchToggle(anime: Anime, watchStatus?: WatchStatus) {
     const isWatched = watchedIds.has(anime.id);
-    if (isWatched) {
+    if (isWatched && !watchStatus) {
       await fetch(`/api/watched?anilistId=${anime.id}`, { method: "DELETE" });
       setWatchedIds((prev) => {
         const next = new Set(prev);
         next.delete(anime.id);
         return next;
+      });
+    } else if (isWatched && watchStatus) {
+      await fetch("/api/watched", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anilistId: anime.id, watchStatus }),
       });
     } else {
       await fetch("/api/watched", {
@@ -141,6 +147,7 @@ export default function RecommendPage() {
           tags: anime.tags,
           episodes: anime.episodes,
           status: anime.status,
+          watchStatus: watchStatus || "COMPLETED",
         }),
       });
       setWatchedIds((prev) => new Set(prev).add(anime.id));

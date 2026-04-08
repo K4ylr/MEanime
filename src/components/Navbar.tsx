@@ -10,8 +10,9 @@ export default function Navbar() {
 
   const links = [
     { href: "/", label: "首页" },
-    { href: "/watched", label: "已看" },
+    { href: "/watched", label: "追番" },
     { href: "/recommend", label: "推荐" },
+    { href: "/stats", label: "统计" },
   ];
 
   return (

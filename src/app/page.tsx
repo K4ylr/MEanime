@@ -7,7 +7,7 @@ import AnimeGrid from "@/components/AnimeGrid";
 import AnimeRow from "@/components/AnimeRow";
 import FilterBar, { FilterState } from "@/components/FilterBar";
 import LoadingGrid from "@/components/LoadingGrid";
-import { Anime } from "@/lib/types";
+import { Anime, WatchStatus } from "@/lib/types";
 import {
   getTrendingThisSeason,
   getPopularThisSeason,
@@ -147,18 +147,24 @@ export default function HomePage() {
     setLoadingMore(false);
   }
 
-  async function handleWatchToggle(anime: Anime) {
+  async function handleWatchToggle(anime: Anime, watchStatus?: WatchStatus) {
     if (!session?.user) {
       window.location.href = "/login";
       return;
     }
     const isWatched = watchedIds.has(anime.id);
-    if (isWatched) {
+    if (isWatched && !watchStatus) {
       await fetch(`/api/watched?anilistId=${anime.id}`, { method: "DELETE" });
       setWatchedIds((prev) => {
         const next = new Set(prev);
         next.delete(anime.id);
         return next;
+      });
+    } else if (isWatched && watchStatus) {
+      await fetch("/api/watched", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anilistId: anime.id, watchStatus }),
       });
     } else {
       await fetch("/api/watched", {
@@ -175,6 +181,7 @@ export default function HomePage() {
           tags: anime.tags,
           episodes: anime.episodes,
           status: anime.status,
+          watchStatus: watchStatus || "COMPLETED",
         }),
       });
       setWatchedIds((prev) => new Set(prev).add(anime.id));

@@ -6,6 +6,15 @@ const titleCache = new Map<string, string | null>();
 // Cache for Chinese info (title + summary)
 const infoCache = new Map<string, { title: string | null; summary: string | null }>();
 
+// Detect if text is primarily Japanese (contains significant hiragana/katakana)
+function isJapanese(text: string): boolean {
+  if (!text) return false;
+  const jpChars = text.match(/[\u3040-\u309F\u30A0-\u30FF]/g);
+  if (!jpChars) return false;
+  // If hiragana+katakana make up more than 15% of the text, it's Japanese
+  return jpChars.length / text.length > 0.15;
+}
+
 export async function searchChineseTitle(keyword: string): Promise<string | null> {
   if (titleCache.has(keyword)) return titleCache.get(keyword) || null;
 
@@ -33,9 +42,12 @@ export async function searchChineseInfo(keyword: string): Promise<{ title: strin
     const data = await res.json();
     if (data.list && data.list.length > 0) {
       const item = data.list[0];
+      const rawSummary = item.summary || null;
+      // Filter out Japanese summaries - only keep Chinese ones
+      const summary = rawSummary && !isJapanese(rawSummary) ? rawSummary : null;
       const result = {
         title: item.name_cn || null,
-        summary: item.summary || null,
+        summary,
       };
       infoCache.set(keyword, result);
       titleCache.set(keyword, result.title);

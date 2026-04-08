@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { WatchedAnime } from "@/lib/types";
+import { WatchedAnime, WatchStatus, WATCH_STATUS_CN } from "@/lib/types";
 import { getBahamutUrl, getBilibiliUrl } from "@/lib/links";
 import { getGenreColor, GENRE_CN } from "@/lib/genreColors";
 
@@ -37,11 +37,19 @@ function useChineseTitles(watchedList: WatchedAnime[]) {
   return titles;
 }
 
+const TABS: { key: WatchStatus | "ALL"; label: string }[] = [
+  { key: "ALL", label: "全部" },
+  { key: "WATCHING", label: "在看" },
+  { key: "COMPLETED", label: "看过" },
+  { key: "PLAN_TO_WATCH", label: "想看" },
+];
+
 export default function WatchedPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [watchedList, setWatchedList] = useState<WatchedAnime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<WatchStatus | "ALL">("ALL");
   const cnTitles = useChineseTitles(watchedList);
 
   useEffect(() => {
@@ -65,6 +73,17 @@ export default function WatchedPage() {
     setWatchedList((prev) => prev.filter((w) => w.anilistId !== anilistId));
   }
 
+  const filteredList = activeTab === "ALL"
+    ? watchedList
+    : watchedList.filter((w) => w.watchStatus === activeTab);
+
+  // Count per tab
+  const counts: Record<string, number> = { ALL: watchedList.length };
+  watchedList.forEach((w) => {
+    const ws = w.watchStatus || "COMPLETED";
+    counts[ws] = (counts[ws] || 0) + 1;
+  });
+
   // Genre stats
   const genreCount: Record<string, number> = {};
   watchedList.forEach((w) => {
@@ -86,26 +105,46 @@ export default function WatchedPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8">
-      <div className="mb-4 flex items-center justify-between sm:mb-6">
+      <div className="mb-4 sm:mb-6">
         <h1 className="text-xl font-bold text-white sm:text-2xl">
-          我的已看列表
+          我的追番列表
           <span className="ml-2 text-base font-normal text-gray-500 sm:text-lg">
             ({watchedList.length} 部)
           </span>
         </h1>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 rounded-xl bg-gray-900 p-1 sm:mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+              activeTab === tab.key
+                ? "bg-sky-500/20 text-sky-400"
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            {tab.label}
+            {counts[tab.key] ? (
+              <span className="ml-1 text-[10px] opacity-60 sm:text-xs">{counts[tab.key]}</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
       {/* Genre Stats */}
-      {topGenres.length > 0 && (
-        <div className="mb-6 rounded-xl border border-gray-800 bg-gray-900 p-4">
-          <h3 className="mb-3 text-sm font-medium text-gray-400">
+      {topGenres.length > 0 && activeTab === "ALL" && (
+        <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:mb-6 sm:p-4">
+          <h3 className="mb-2 text-xs font-medium text-gray-400 sm:mb-3 sm:text-sm">
             你的观看口味
           </h3>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {topGenres.map(([genre, count]) => (
               <span
                 key={genre}
-                className={`rounded-full border px-3 py-1 text-sm font-medium ${getGenreColor(genre)}`}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium sm:px-3 sm:py-1 sm:text-sm ${getGenreColor(genre)}`}
               >
                 {GENRE_CN[genre] || genre}{" "}
                 <span className="opacity-60">x{count}</span>
@@ -115,23 +154,28 @@ export default function WatchedPage() {
         </div>
       )}
 
-      {watchedList.length === 0 ? (
+      {filteredList.length === 0 ? (
         <div className="py-20 text-center">
-          <p className="text-lg text-gray-500">还没有记录任何番剧</p>
-          <p className="mt-2 text-sm text-gray-600">
-            去首页搜索并添加你看过的番剧吧！
+          <p className="text-base text-gray-500 sm:text-lg">
+            {activeTab === "ALL" ? "还没有记录任何番剧" : `没有${WATCH_STATUS_CN[activeTab as WatchStatus]}的番剧`}
           </p>
+          {activeTab === "ALL" && (
+            <p className="mt-2 text-sm text-gray-600">
+              去首页搜索并添加你看过的番剧吧！
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {watchedList.map((anime) => {
+          {filteredList.map((anime) => {
             const cnTitle = cnTitles.get(anime.anilistId);
             const displayTitle = cnTitle || anime.titleEnglish || anime.titleRomaji;
             const bilibiliUrl = getBilibiliUrl(cnTitle || null, anime.titleEnglish, anime.titleRomaji);
+            const ws = anime.watchStatus || "COMPLETED";
             return (
               <div
                 key={anime.id}
-                className="flex gap-4 rounded-xl border border-gray-800 bg-gray-900 p-3 transition-colors hover:border-gray-700"
+                className="flex gap-3 rounded-xl border border-gray-800 bg-gray-900 p-3 transition-colors hover:border-gray-700 sm:gap-4"
               >
                 {/* Cover */}
                 <Link href={`/anime/${anime.anilistId}`} className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg">
@@ -145,16 +189,22 @@ export default function WatchedPage() {
                 </Link>
 
                 {/* Info */}
-                <div className="flex flex-1 flex-col justify-between">
+                <div className="flex flex-1 flex-col justify-between overflow-hidden">
                   <div>
-                    <Link href={`/anime/${anime.anilistId}`}>
-                      <h3 className="font-semibold text-gray-100 hover:text-sky-300 transition-colors">
-                        {displayTitle}
-                      </h3>
-                    </Link>
-                    {anime.titleNative && anime.titleNative !== displayTitle && (
-                      <p className="text-xs text-gray-500">{anime.titleNative}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Link href={`/anime/${anime.anilistId}`}>
+                        <h3 className="truncate font-semibold text-gray-100 hover:text-sky-300 transition-colors">
+                          {displayTitle}
+                        </h3>
+                      </Link>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        ws === "WATCHING" ? "bg-sky-500/20 text-sky-400"
+                        : ws === "PLAN_TO_WATCH" ? "bg-amber-500/20 text-amber-400"
+                        : "bg-teal-500/20 text-teal-400"
+                      }`}>
+                        {WATCH_STATUS_CN[ws as WatchStatus]}
+                      </span>
+                    </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {anime.genres.slice(0, 4).map((g) => (
                         <span
@@ -168,6 +218,9 @@ export default function WatchedPage() {
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-gray-500">
+                    {anime.userScore && (
+                      <span className="font-bold text-yellow-400">{anime.userScore}/10</span>
+                    )}
                     {anime.averageScore && (
                       <span
                         className={
@@ -182,10 +235,6 @@ export default function WatchedPage() {
                       </span>
                     )}
                     {anime.episodes && <span>{anime.episodes} 集</span>}
-                    <span>
-                      添加于{" "}
-                      {new Date(anime.addedAt).toLocaleDateString("zh-CN")}
-                    </span>
                   </div>
                 </div>
 

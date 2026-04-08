@@ -1,6 +1,6 @@
 "use client";
 
-import { Anime } from "@/lib/types";
+import { Anime, WatchStatus } from "@/lib/types";
 import AnimeCard from "./AnimeCard";
 
 export default function AnimeGrid({
@@ -10,7 +10,7 @@ export default function AnimeGrid({
 }: {
   animeList: Anime[];
   watchedIds: Set<number>;
-  onWatchToggle: (anime: Anime) => void;
+  onWatchToggle: (anime: Anime, status?: WatchStatus) => void;
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">

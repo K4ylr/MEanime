@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Anime } from "@/lib/types";
+import { Anime, WatchStatus } from "@/lib/types";
 import AnimeCard from "./AnimeCard";
 
 export default function AnimeRow({
@@ -13,7 +13,7 @@ export default function AnimeRow({
   title: string;
   animeList: Anime[];
   watchedIds: Set<number>;
-  onWatchToggle: (anime: Anime) => void;
+  onWatchToggle: (anime: Anime, status?: WatchStatus) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 

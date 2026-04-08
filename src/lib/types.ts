@@ -60,6 +60,14 @@ export interface AnimeDetail extends Anime {
   };
 }
 
+export type WatchStatus = "PLAN_TO_WATCH" | "WATCHING" | "COMPLETED";
+
+export const WATCH_STATUS_CN: Record<WatchStatus, string> = {
+  PLAN_TO_WATCH: "想看",
+  WATCHING: "在看",
+  COMPLETED: "看过",
+};
+
 export interface WatchedAnime {
   id: string;
   anilistId: number;
@@ -72,6 +80,8 @@ export interface WatchedAnime {
   tags: AnimeTag[];
   episodes: number | null;
   status: string | null;
+  watchStatus: WatchStatus;
+  userScore: number | null;
   addedAt: string;
   chineseTitle?: string;
 }

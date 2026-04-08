@@ -46,10 +46,42 @@ export async function POST(req: Request) {
       tags: JSON.stringify(body.tags || []),
       episodes: body.episodes || null,
       status: body.status || null,
+      watchStatus: body.watchStatus || "COMPLETED",
+      userScore: body.userScore || null,
     },
   });
 
   return NextResponse.json(watched);
+}
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  const userId = (session.user as { id: string }).id;
+  const body = await req.json();
+  const { anilistId, watchStatus, userScore } = body;
+
+  if (!anilistId) {
+    return NextResponse.json({ error: "缺少 anilistId" }, { status: 400 });
+  }
+
+  const data: Record<string, unknown> = {};
+  if (watchStatus !== undefined) data.watchStatus = watchStatus;
+  if (userScore !== undefined) data.userScore = userScore;
+
+  const updated = await prisma.watched.updateMany({
+    where: { userId, anilistId },
+    data,
+  });
+
+  if (updated.count === 0) {
+    return NextResponse.json({ error: "未找到记录" }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: "已更新" });
 }
 
 export async function DELETE(req: Request) {

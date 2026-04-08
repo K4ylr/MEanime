@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { AnimeDetail, Anime } from "@/lib/types";
+import { AnimeDetail, Anime, WatchStatus, WATCH_STATUS_CN } from "@/lib/types";
 import { getAnimeDetail } from "@/lib/anilist";
 import { getGenreColor, GENRE_CN, TAG_CN } from "@/lib/genreColors";
 import { getBahamutUrl, getBilibiliUrl } from "@/lib/links";
@@ -63,6 +63,8 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
   const [cnSummary, setCnSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isWatched, setIsWatched] = useState(false);
+  const [watchStatus, setWatchStatus] = useState<WatchStatus>("COMPLETED");
+  const [userScore, setUserScore] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -89,20 +91,29 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setIsWatched(data.some((w: { anilistId: number }) => w.anilistId === parseInt(id)));
+          const entry = data.find((w: { anilistId: number }) => w.anilistId === parseInt(id));
+          if (entry) {
+            setIsWatched(true);
+            setWatchStatus(entry.watchStatus || "COMPLETED");
+            setUserScore(entry.userScore || null);
+          }
         }
       })
       .catch(() => {});
   }, [session, id]);
 
-  async function toggleWatched() {
+  async function handleSetStatus(status: WatchStatus) {
     if (!session?.user || !anime) {
       window.location.href = "/login";
       return;
     }
     if (isWatched) {
-      await fetch(`/api/watched?anilistId=${anime.id}`, { method: "DELETE" });
-      setIsWatched(false);
+      await fetch("/api/watched", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anilistId: anime.id, watchStatus: status }),
+      });
+      setWatchStatus(status);
     } else {
       await fetch("/api/watched", {
         method: "POST",
@@ -118,10 +129,29 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
           tags: anime.tags,
           episodes: anime.episodes,
           status: anime.status,
+          watchStatus: status,
         }),
       });
       setIsWatched(true);
+      setWatchStatus(status);
     }
+  }
+
+  async function handleSetScore(score: number) {
+    if (!session?.user || !anime || !isWatched) return;
+    await fetch("/api/watched", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anilistId: anime.id, userScore: score }),
+    });
+    setUserScore(score);
+  }
+
+  async function handleRemove() {
+    if (!anime) return;
+    await fetch(`/api/watched?anilistId=${anime.id}`, { method: "DELETE" });
+    setIsWatched(false);
+    setUserScore(null);
   }
 
   if (loading) {
@@ -185,16 +215,55 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             {/* Action buttons under cover */}
             <div className="mt-4 flex flex-col gap-2">
-              <button
-                onClick={toggleWatched}
-                className={`w-full rounded-xl py-2.5 text-sm font-medium transition-colors ${
-                  isWatched
-                    ? "bg-teal-500/20 text-teal-400 hover:bg-teal-500/30"
-                    : "bg-sky-600 text-white hover:bg-sky-500"
-                }`}
-              >
-                {isWatched ? "已看 ✓" : "+ 标记已看"}
-              </button>
+              {/* Watch status buttons */}
+              <div className="flex gap-1.5">
+                {(Object.keys(WATCH_STATUS_CN) as WatchStatus[]).map((ws) => (
+                  <button
+                    key={ws}
+                    onClick={() => handleSetStatus(ws)}
+                    className={`flex-1 rounded-xl py-2 text-xs font-medium transition-colors sm:text-sm ${
+                      isWatched && watchStatus === ws
+                        ? "bg-teal-500/20 text-teal-400 border border-teal-500/40"
+                        : "bg-gray-800 text-gray-400 border border-transparent hover:bg-gray-700"
+                    }`}
+                  >
+                    {WATCH_STATUS_CN[ws]}
+                  </button>
+                ))}
+              </div>
+              {/* Remove button */}
+              {isWatched && (
+                <button
+                  onClick={handleRemove}
+                  className="w-full rounded-xl py-1.5 text-xs text-gray-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                >
+                  移除记录
+                </button>
+              )}
+              {/* Rating */}
+              {isWatched && (
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-3">
+                  <p className="mb-2 text-xs text-gray-400">我的评分</p>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((score) => (
+                      <button
+                        key={score}
+                        onClick={() => handleSetScore(score)}
+                        className={`flex-1 rounded py-1 text-xs font-bold transition-colors ${
+                          userScore && score <= userScore
+                            ? "bg-yellow-500/30 text-yellow-400"
+                            : "bg-gray-800 text-gray-600 hover:bg-gray-700 hover:text-gray-400"
+                        }`}
+                      >
+                        {score}
+                      </button>
+                    ))}
+                  </div>
+                  {userScore && (
+                    <p className="mt-1.5 text-center text-sm font-bold text-yellow-400">{userScore}/10</p>
+                  )}
+                </div>
+              )}
               <a
                 href={bahamutUrl}
                 target="_blank"

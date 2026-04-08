@@ -29,6 +29,8 @@ model Watched {
   tags         String   // JSON array of {name, rank}
   episodes     Int?
   status       String?
+  watchStatus  String   @default("COMPLETED") // PLAN_TO_WATCH, WATCHING, COMPLETED
+  userScore    Int?     // 1-10 personal rating
   addedAt      DateTime @default(now())
 
   @@unique([userId, anilistId])

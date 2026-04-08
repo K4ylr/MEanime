@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Anime } from "@/lib/types";
+import { Anime, WatchStatus, WATCH_STATUS_CN } from "@/lib/types";
 import { getGenreColor } from "@/lib/genreColors";
 import { GENRE_CN } from "@/lib/genreColors";
 
@@ -76,10 +76,12 @@ export default function AnimeCard({
   anime,
   watchedIds,
   onWatchToggle,
+  onStatusChange,
 }: {
   anime: Anime;
   watchedIds: Set<number>;
-  onWatchToggle: (anime: Anime) => void;
+  onWatchToggle: (anime: Anime, status?: WatchStatus) => void;
+  onStatusChange?: (anime: Anime, status: WatchStatus) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const cnTitle = useChineseTitle(anime);
@@ -87,6 +89,14 @@ export default function AnimeCard({
   const isWatched = watchedIds.has(anime.id);
 
   const studioName = anime.studios?.nodes?.[0]?.name;
+
+  function handleStatusClick(status: WatchStatus) {
+    if (isWatched && onStatusChange) {
+      onStatusChange(anime, status);
+    } else {
+      onWatchToggle(anime, status);
+    }
+  }
 
   return (
     <div
@@ -149,20 +159,23 @@ export default function AnimeCard({
               第 {anime.nextAiringEpisode.episode} 集即将播出
             </p>
           )}
-          <div className="mt-2 flex gap-1.5">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                onWatchToggle(anime);
-              }}
-              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-medium transition-colors ${
-                isWatched
-                  ? "bg-teal-500/20 text-teal-400 hover:bg-teal-500/30"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-              }`}
-            >
-              {isWatched ? "已看 ✓" : "+ 已看"}
-            </button>
+          <div className="mt-2 flex gap-1">
+            {(Object.keys(WATCH_STATUS_CN) as WatchStatus[]).map((ws) => (
+              <button
+                key={ws}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleStatusClick(ws);
+                }}
+                className={`flex-1 rounded-lg py-1.5 text-center text-[10px] font-medium transition-colors sm:text-xs ${
+                  isWatched
+                    ? "bg-teal-500/20 text-teal-400 hover:bg-teal-500/30"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                }`}
+              >
+                {WATCH_STATUS_CN[ws]}
+              </button>
+            ))}
           </div>
         </div>
       )}
