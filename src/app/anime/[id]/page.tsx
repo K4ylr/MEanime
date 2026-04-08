@@ -37,13 +37,13 @@ const SEASON_CN: Record<string, string> = {
 // Chinese title cache (shared across components on this page)
 const cnCache = new Map<string, string | null>();
 
-async function fetchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null }> {
+async function fetchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null; bgmId: number | null }> {
   try {
     const res = await fetch(`/api/chinese-title?keyword=${encodeURIComponent(keyword)}`);
     const data = await res.json();
-    return { title: data.title || null, summary: data.summary || null };
+    return { title: data.title || null, summary: data.summary || null, bgmId: data.bgmId || null };
   } catch {
-    return { title: null, summary: null };
+    return { title: null, summary: null, bgmId: null };
   }
 }
 
@@ -109,6 +109,7 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
   const [anime, setAnime] = useState<AnimeDetail | null>(null);
   const [cnTitle, setCnTitle] = useState<string | null>(null);
   const [cnSummary, setCnSummary] = useState<string | null>(null);
+  const [bgmComments, setBgmComments] = useState<{ user: string; comment: string; rate: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [isWatched, setIsWatched] = useState(false);
   const [watchStatus, setWatchStatus] = useState<WatchStatus>("COMPLETED");
@@ -119,11 +120,18 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
       try {
         const detail = await getAnimeDetail(parseInt(id));
         setAnime(detail);
-        // Fetch Chinese title + summary
+        // Fetch Chinese title + summary + bgmId
         const keyword = detail.title.native || detail.title.romaji;
         const info = await fetchChineseInfo(keyword);
         setCnTitle(info.title);
         setCnSummary(info.summary);
+        // Fetch Bangumi comments if we have a subject ID
+        if (info.bgmId) {
+          fetch(`/api/chinese-title?bgmId=${info.bgmId}`)
+            .then((r) => r.json())
+            .then((d) => { if (d.comments) setBgmComments(d.comments); })
+            .catch(() => {});
+        }
       } catch {
         // silent
       }
@@ -437,30 +445,23 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
           </section>
         )}
 
-        {/* Reviews */}
-        {reviews.length > 0 && (
+        {/* Bangumi Chinese Comments */}
+        {bgmComments.length > 0 && (
           <section className="mt-12 pb-12">
-            <h2 className="mb-4 text-lg font-bold text-white">用户评价</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {reviews.map((review, idx) => (
+            <h2 className="mb-4 text-lg font-bold text-white">用户短评</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {bgmComments.map((c, idx) => (
                 <div key={idx} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-                  <div className="flex items-center gap-3">
-                    {review.user.avatar?.medium && (
-                      <Image
-                        src={review.user.avatar.medium}
-                        alt={review.user.name}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-300">{c.user}</span>
+                    {c.rate > 0 && (
+                      <span className={`ml-auto text-sm font-bold ${c.rate >= 8 ? "text-green-400" : c.rate >= 5 ? "text-yellow-400" : "text-red-400"}`}>
+                        {c.rate}/10
+                      </span>
                     )}
-                    <span className="text-sm font-medium text-gray-300">{review.user.name}</span>
-                    <span className={`ml-auto text-sm font-bold ${review.score >= 75 ? "text-green-400" : review.score >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-                      {review.score}/100
-                    </span>
                   </div>
-                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-gray-400">
-                    {review.summary}
+                  <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                    {c.comment}
                   </p>
                 </div>
               ))}

@@ -4,8 +4,8 @@ const WIKI_API = "https://zh.wikipedia.org/w/api.php";
 // Global in-memory cache for Chinese titles
 const titleCache = new Map<string, string | null>();
 
-// Cache for Chinese info (title + summary)
-const infoCache = new Map<string, { title: string | null; summary: string | null }>();
+// Cache for Chinese info (title + summary + bgmId)
+const infoCache = new Map<string, { title: string | null; summary: string | null; bgmId: number | null }>();
 
 // Detect if text is primarily Japanese (contains significant hiragana/katakana)
 function isJapanese(text: string): boolean {
@@ -24,7 +24,7 @@ function isChinese(text: string): boolean {
 }
 
 // Search Bangumi for a single keyword, return raw results
-async function searchBangumi(keyword: string): Promise<{ name_cn?: string; summary?: string }[]> {
+async function searchBangumi(keyword: string): Promise<{ id?: number; name_cn?: string; summary?: string }[]> {
   try {
     const res = await fetch(
       `${BGM_API}/search/subject/${encodeURIComponent(keyword)}?type=2&responseGroup=large`,
@@ -88,17 +88,20 @@ export async function searchChineseTitle(keyword: string): Promise<string | null
   return info.title;
 }
 
-export async function searchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null }> {
+export async function searchChineseInfo(keyword: string): Promise<{ title: string | null; summary: string | null; bgmId: number | null }> {
   if (infoCache.has(keyword)) return infoCache.get(keyword)!;
 
   try {
     const list = await searchBangumi(keyword);
     let bestTitle: string | null = null;
     let bestSummary: string | null = null;
+    let bgmId: number | null = null;
 
     for (const item of list.slice(0, 5)) {
+      if (!bgmId && item.id) bgmId = item.id;
       if (!bestTitle && item.name_cn) {
         bestTitle = item.name_cn;
+        if (!bgmId && item.id) bgmId = item.id;
       }
       if (!bestSummary && item.summary && !isJapanese(item.summary) && isChinese(item.summary)) {
         bestSummary = item.summary;
@@ -115,14 +118,46 @@ export async function searchChineseInfo(keyword: string): Promise<{ title: strin
       }
     }
 
-    const result = { title: bestTitle, summary: bestSummary };
+    const result = { title: bestTitle, summary: bestSummary, bgmId };
     infoCache.set(keyword, result);
     titleCache.set(keyword, result.title);
     return result;
   } catch {
-    const result = { title: null, summary: null };
+    const result = { title: null, summary: null, bgmId: null };
     infoCache.set(keyword, result);
     return result;
+  }
+}
+
+// Fetch Chinese comments from Bangumi
+export interface BgmComment {
+  user: string;
+  comment: string;
+  rate: number;
+}
+
+export async function fetchBgmComments(bgmId: number): Promise<BgmComment[]> {
+  try {
+    const res = await fetch(
+      `${BGM_API}/v0/subjects/${bgmId}/comments?limit=10`,
+      {
+        headers: { "User-Agent": "MEanime/1.0" },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter((c: { comment?: string; rate?: number }) => c.comment && c.comment.length > 5)
+      .slice(0, 8)
+      .map((c: { user?: { nickname?: string; username?: string }; comment: string; rate?: number }) => ({
+        user: c.user?.nickname || c.user?.username || "匿名",
+        comment: c.comment,
+        rate: c.rate || 0,
+      }));
+  } catch {
+    return [];
   }
 }
 

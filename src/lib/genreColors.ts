@@ -59,7 +59,7 @@ export const TAG_CN: Record<string, string> = {
   Orphan: "孤儿", Tomboy: "假小子", Twins: "双胞胎",
   // Setting
   Urban: "都市", "Urban Fantasy": "都市奇幻", Cyberpunk: "赛博朋克",
-  Dystopia: "反乌托邦", "Foreign": "异国", "Countryside": "乡村",
+  Dystopia: "反乌托邦", Foreign: "异国", Countryside: "乡村",
   // Story Elements
   Romance: "恋爱", "Love Triangle": "三角恋", Tragedy: "悲剧",
   Mystery: "悬疑", Conspiracy: "阴谋", Detective: "侦探",
@@ -74,28 +74,42 @@ export const TAG_CN: Record<string, string> = {
   Battle: "战斗", Guns: "枪战",
   Swordplay: "剑术", "Hand to Hand Combat": "近身格斗",
   // Sports & Competition
-  Basketball: "篮球", Baseball: "棒球", Soccer: "足球",
-  Swimming: "游泳", Boxing: "拳击", Tennis: "网球",
+  Volleyball: "排球", Basketball: "篮球", Baseball: "棒球", Soccer: "足球",
+  Swimming: "游泳", Boxing: "拳击", Tennis: "网球", Rugby: "橄榄球",
+  Cycling: "自行车", "Ice Skating": "滑冰", "Track & Field": "田径",
+  Badminton: "羽毛球", "Table Tennis": "乒乓球", Golf: "高尔夫",
+  Archery: "射箭", Fishing: "钓鱼", Skateboarding: "滑板",
+  Surfing: "冲浪", Climbing: "攀岩", Wrestling: "摔跤",
   "Card Battle": "卡牌对战", "Board Game": "桌游",
+  Fitness: "健身", "Martial Arts Tournament": "武术大会",
   // Arts & Culture
-  "Band": "乐队", Idol: "偶像", Dancing: "舞蹈",
+  Band: "乐队", Idol: "偶像", Dancing: "舞蹈",
   Cooking: "料理", Drawing: "绘画", Acting: "演技",
-  Photography: "摄影", Fashion: "时尚",
+  Photography: "摄影", Fashion: "时尚", Calligraphy: "书法",
   // Supernatural
   Gods: "神明", Angels: "天使", Ghost: "幽灵", Zombies: "丧尸",
   Witch: "女巫", Exorcism: "驱魔", Reincarnation: "转生",
   Afterlife: "来世", Shapeshifting: "变身", Youkai: "妖怪",
-  Curse: "诅咒", Curses: "诅咒",
+  Curse: "诅咒", Curses: "诅咒", Necromancy: "死灵术",
   // Relationships
   Family: "家庭", Friendship: "友情", Siblings: "兄弟姐妹",
   "Found Family": "羁绊家庭", Pets: "宠物", Teacher: "教师",
+  // Character Archetypes
+  Kuudere: "酷娇", Tsundere: "傲娇", Yandere: "病娇",
+  Dandere: "呆娇", Himedere: "公主娇", Coodere: "冷淡",
+  // School/Club
+  "School Club": "校园社团", "Student Council": "学生会",
+  "Delinquents": "不良少年", "School Life": "校园生活",
+  // Cute/Moe
+  "Cute Boys Doing Cute Things": "男孩日常", "Cute Girls Doing Cute Things": "女孩日常",
+  Chibi: "Q版", Moe: "萌系", Loli: "萝莉", Shota: "正太",
   // Other common tags
   Comedy: "喜剧", Drama: "剧情", Fantasy: "奇幻",
   "Sci-Fi": "科幻", Action: "动作", Adventure: "冒险",
   Supernatural: "超自然", Thriller: "惊悚",
   "Dissociative Identities": "人格分裂",
   Amnesia: "失忆", "Age Gap": "年龄差",
-  Otaku: "宅文化", NEET: "尼特族", "Chuunibyou": "中二病",
+  Otaku: "宅文化", NEET: "尼特族", Chuunibyou: "中二病",
   Cultivation: "修仙", Wuxia: "武侠",
   Robots: "机器人", "Artificial Intelligence": "人工智能",
   "Virtual World": "虚拟世界", "Video Games": "游戏",
@@ -104,4 +118,42 @@ export const TAG_CN: Record<string, string> = {
   "Based on a Manga": "漫画改编", "Based on a Light Novel": "轻小说改编",
   "Based on a Visual Novel": "视觉小说改编", "Based on a Video Game": "游戏改编",
   "Original Work": "原创",
+  // Power/Ability
+  Superpower: "超能力", Telekinesis: "念力", Telepathy: "心灵感应",
+  "Power Suit": "动力甲", Transformation: "变身",
+  // Dark/Mature
+  "Dark Fantasy": "黑暗奇幻", Noir: "黑色", Terrorism: "恐怖主义",
+  Drugs: "毒品", Gambling: "赌博", Gangs: "帮派", Prison: "监狱",
+  // Sci-Fi specific
+  Alien: "外星人", Android: "仿生人", Clone: "克隆",
+  "Time Manipulation": "时间操控", Steampunk: "蒸汽朋克",
+  "Space Opera": "太空歌剧",
+  // Daily Life
+  Workplace: "职场", Food: "美食", Travel: "旅行",
+  Camping: "露营",
+  // Emotional
+  Heartwarming: "治愈", Tearjerker: "催泪", "Feel-good": "暖心",
+  Bittersweet: "苦甜", Melancholy: "忧郁",
+  // Narrative
+  Flashback: "回忆", Foreshadowing: "伏笔", "Non-linear": "非线性叙事",
+  "Unreliable Narrator": "不可靠叙述者", Meta: "元叙事",
+  // Misc
+  Ninja: "忍者", Pirate: "海盗", Knight: "骑士", Dragon: "龙",
+  Monster: "怪物", Dungeon: "地牢", Adventurer: "冒险者",
+  Guild: "公会", Kingdom: "王国", Empire: "帝国",
+  Mythology: "神话", Folklore: "民间传说",
+  "Love Polygon": "多角恋", Henshin: "变身",
+  "Gender Bending": "性转",
+  Crossdressing: "女装/男装", Cosplay: "角色扮演",
+  Villainess: "恶役千金", Otome: "乙女",
+  Iyashikei: "治愈系", CGDCT: "可爱女孩日常",
+  "Boys' Love": "耽美", "Girls' Love": "百合",
+  Yuri: "百合", Yaoi: "耽美", BL: "耽美", GL: "百合",
+  Fanservice: "福利",
+  Masochism: "受虐", Sadism: "施虐",
+  "Age Regression": "年龄回溯", "Body Swapping": "灵魂互换",
+  Memory: "记忆",
+  Medieval: "中世纪", "Feudal Japan": "日本战国",
+  "Tang Dynasty": "唐朝", "Edo Period": "江户时代",
+  Tokugawa: "德川", Meiji: "明治",
 };
