@@ -53,6 +53,22 @@ export function hasCachedTitle(id: number): boolean {
   return MEM_CACHE.has(id);
 }
 
+// Simplify a title for better Bangumi search matching
+function simplifyTitle(title: string): string | null {
+  let s = title;
+  // Remove common prefixes
+  s = s.replace(/^(劇場版|映画|OVA|TV|テレビアニメ)\s*/g, "");
+  // Remove content in brackets: 〈...〉 ＜...＞ （...） 【...】 [...] (...)
+  s = s.replace(/[〈＜（【\[（].*?[〉＞）】\]）]/g, "");
+  // Remove season/part suffixes
+  s = s.replace(/\s*(Season|Part|Cour|期|章|篇|編)\s*\d*\s*$/i, "");
+  // Remove trailing special chars
+  s = s.replace(/[☆★\s]+$/, "").trim();
+  // Only return if meaningfully different and not too short
+  if (s.length >= 2 && s !== title) return s;
+  return null;
+}
+
 // Fetch a single Chinese title from Bangumi API (tries multiple keywords)
 export async function fetchChineseTitle(
   id: number,
@@ -62,7 +78,16 @@ export async function fetchChineseTitle(
 ): Promise<string | null> {
   if (hasCachedTitle(id)) return getCachedTitle(id);
 
-  const keywords = [native, romaji, english].filter(Boolean) as string[];
+  // Build keyword list: original titles + simplified versions
+  const originals = [native, romaji, english].filter(Boolean) as string[];
+  const keywords = [...originals];
+  for (const kw of originals) {
+    const simplified = simplifyTitle(kw);
+    if (simplified && !keywords.includes(simplified)) {
+      keywords.push(simplified);
+    }
+  }
+
   for (const kw of keywords) {
     try {
       const res = await fetch(`/api/chinese-title?keyword=${encodeURIComponent(kw)}`);
@@ -97,7 +122,12 @@ export async function prefetchChineseTitles(
     await Promise.allSettled(
       toFetch.map(async (item) => {
         if (controller.signal.aborted) return;
-        const keywords = [item.title.native, item.title.romaji, item.title.english].filter(Boolean) as string[];
+        const originals = [item.title.native, item.title.romaji, item.title.english].filter(Boolean) as string[];
+        const keywords = [...originals];
+        for (const kw of originals) {
+          const simplified = simplifyTitle(kw);
+          if (simplified && !keywords.includes(simplified)) keywords.push(simplified);
+        }
         for (const kw of keywords) {
           if (controller.signal.aborted) return;
           try {
