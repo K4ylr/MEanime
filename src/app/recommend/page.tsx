@@ -8,6 +8,7 @@ import LoadingGrid from "@/components/LoadingGrid";
 import { Anime, WatchedAnime, AnimeTag, WatchStatus } from "@/lib/types";
 import { getRecommendations } from "@/lib/anilist";
 import { ALL_GENRES, GENRE_CN, getGenreColor } from "@/lib/genreColors";
+import { prefetchChineseTitles } from "@/lib/cnTitleCache";
 
 
 
@@ -92,6 +93,7 @@ export default function RecommendPage() {
       setCurrentGenres(useGenres);
 
       const result = await getRecommendations(useGenres, sortedTags, ids, 1);
+      await prefetchChineseTitles(result.media, 3000);
       setRecommendations(result.media);
       setHasNextPage(result.pageInfo.hasNextPage);
     } catch {

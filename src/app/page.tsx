@@ -16,6 +16,7 @@ import {
   searchAnime,
   browseAnime,
 } from "@/lib/anilist";
+import { prefetchChineseTitles } from "@/lib/cnTitleCache";
 
 
 type ViewMode = "sections" | "search" | "browse";
@@ -55,7 +56,7 @@ export default function HomePage() {
       .catch(() => {});
   }, [session]);
 
-  // Fetch homepage sections
+  // Fetch homepage sections + prefetch Chinese titles
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -66,6 +67,8 @@ export default function HomePage() {
           getUpcomingNextSeason(),
           getAllTimePopular(),
         ]);
+        // Prefetch Chinese titles during loading phase (max 4s)
+        await prefetchChineseTitles([...t, ...p, ...u, ...a]);
         setTrending(t);
         setPopular(p);
         setUpcoming(u);
@@ -89,6 +92,7 @@ export default function HomePage() {
     setLoading(true);
     try {
       const result = await searchAnime(query);
+      await prefetchChineseTitles(result.media, 3000);
       setSearchResults(result.media);
       setHasNextPage(result.pageInfo.hasNextPage);
       setBrowsePage(1);
@@ -116,6 +120,7 @@ export default function HomePage() {
         format: newFilters.format || undefined,
         status: newFilters.status || undefined,
       });
+      await prefetchChineseTitles(result.media, 3000);
       setSearchResults(result.media);
       setHasNextPage(result.pageInfo.hasNextPage);
       setBrowsePage(1);
