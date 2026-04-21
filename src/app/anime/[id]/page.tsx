@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -90,6 +90,49 @@ function RecCard({ rec }: { rec: Anime }) {
         </p>
       )}
     </Link>
+  );
+}
+
+function RecommendationsRow({ recommendations }: { recommendations: Anime[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  function scroll(dir: "left" | "right") {
+    if (!scrollRef.current) return;
+    const amount = scrollRef.current.clientWidth * 0.8;
+    scrollRef.current.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  }
+  return (
+    <section className="mt-12">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-white">相似推荐</h2>
+        <div className="flex gap-1">
+          <button
+            onClick={() => scroll("left")}
+            className="rounded-lg bg-gray-800 p-1.5 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={() => scroll("right")}
+            className="rounded-lg bg-gray-800 p-1.5 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-2"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {recommendations.map((rec) => (
+          <RecCard key={rec.id} rec={rec} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -435,14 +478,7 @@ export default function AnimeDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Recommendations */}
         {recommendations.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 text-lg font-bold text-white">相似推荐</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
-              {recommendations.map((rec) => (
-                <RecCard key={rec.id} rec={rec} />
-              ))}
-            </div>
-          </section>
+          <RecommendationsRow recommendations={recommendations} />
         )}
 
         {/* Comments: Bangumi Chinese first, AniList fallback */}
